@@ -16,6 +16,7 @@ import json
 from agents import Agent, OutputGuardrailTripwireTriggered, RunContextWrapper, function_tool
 
 from rdi import config
+from rdi.providers import model_for
 from rdi.agent_team.prompts import ORCHESTRATOR, UNTRUSTED_DATA_POLICY
 from rdi.agent_team.settings import model_settings
 from rdi.agent_team.specialists import market_agent, risk_agent, technical_agent
@@ -82,7 +83,7 @@ async def delegate_risk_research(ctx: RunContextWrapper[ResearchContext], task: 
 
 orchestrator_agent = Agent[ResearchContext](
     name="Research Orchestrator",
-    model=config.MODEL_SMART,
+    model=model_for("smart"),
     model_settings=model_settings(config.MODEL_SMART, 0.2),
     instructions=ORCHESTRATOR.format(security=UNTRUSTED_DATA_POLICY),
     tools=[delegate_technical_research, delegate_market_research, delegate_risk_research,

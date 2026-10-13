@@ -26,5 +26,6 @@ def describe() -> str:
     for agent, role, pattern in AGENTS:
         tools = ", ".join(getattr(t, "name", "?") for t in agent.tools) or "-"
         out = getattr(agent.output_type, "__name__", "text") if agent.output_type else "text"
-        lines.append(f"| {agent.name} | {agent.model} | {tools} | {out} | {role} | {pattern} |")
+        model = getattr(agent.model, "model", agent.model)
+        lines.append(f"| {agent.name} | {model} | {tools} | {out} | {role} | {pattern} |")
     return "\n".join(lines)

@@ -9,14 +9,30 @@ report, critiques and revises it, and stops for a human before any high-impact r
 
 ## Quick start
 ```bash
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env                                     # add OPENAI_API_KEY
-pytest -q                                                # deterministic tests, no key needed
-python tests/offline/scenarios.py                       # 14 agent-layer scenarios with a fake SDK, no key needed
-python app.py                                            # UI on http://127.0.0.1:7860
+python -m venv .venv
+# Windows (PowerShell): .\.venv\Scripts\Activate.ps1      macOS/Linux: source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env                       # Windows: copy .env.example .env  -> then add your key(s) in .env
+python scripts/check_provider.py           # ~20 s check: plain answer, tools, structured output, tools+structured
+python -m pytest -q                        # unit tests + 14 agent-layer scenarios (no API key needed)
+python app.py                              # UI on http://127.0.0.1:7860
 ```
-Traces: https://platform.openai.com/traces (every run is grouped by its `run_id`).
+
+### LLM providers (free option included)
+The agents run on any provider with an OpenAI-compatible API, chosen in `.env` (`src/rdi/providers.py`):
+
+| `.env` | Cost | Notes |
+|---|---|---|
+| `RDI_PROVIDER=gemini` + `GEMINI_API_KEY` | **free tier** ([AI Studio key](https://aistudio.google.com/apikey)) | passes all checks; free-tier rate limits → runs take a few minutes |
+| `RDI_PROVIDER=openai` + `OPENAI_API_KEY` | paid | traces also appear in the OpenAI Traces dashboard |
+| `RDI_PROVIDER=xai` + `XAI_API_KEY` | paid | Grok models |
+| `groq` | free | **not suitable**: Groq does not support tool calling together with structured output, which the specialists need |
+
+Roles can use different providers/models: `RDI_PROVIDER_SMART` / `RDI_PROVIDER_FAST` and `RDI_MODEL_SMART` / `RDI_MODEL_FAST`
+(smart = Planner, Orchestrator, Writer, Critic; fast = specialists, chat assistant, scope classifier).
+
+**Tracing:** every run is wrapped in `trace()` with a span per step. With an OpenAI key, traces go to the OpenAI dashboard;
+without one, `LocalTraceProcessor` stores them in `var/traces/<run_id>.jsonl` and the UI shows them in the *Trace* table.
 
 ## Architecture
 ```

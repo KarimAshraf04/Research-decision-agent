@@ -7,6 +7,7 @@ They are used twice: in parallel by code (step 3) and on demand by the Orchestra
 from agents import Agent
 
 from rdi import config
+from rdi.providers import model_for
 from rdi.agent_team.prompts import SPECIALIST, SPECIALIST_FOCUS, UNTRUSTED_DATA_POLICY
 from rdi.agent_team.settings import model_settings
 from rdi.context import ResearchContext
@@ -18,7 +19,7 @@ from rdi.tools import RESEARCH_TOOLS
 def _make_specialist(name: str) -> Agent[ResearchContext]:
     return Agent[ResearchContext](
         name=name,
-        model=config.MODEL_FAST,
+        model=model_for("fast"),
         model_settings=model_settings(config.MODEL_FAST, 0.1),
         instructions=SPECIALIST.format(name=name, focus=SPECIALIST_FOCUS[name], security=UNTRUSTED_DATA_POLICY),
         tools=RESEARCH_TOOLS,

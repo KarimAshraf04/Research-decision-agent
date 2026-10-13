@@ -154,3 +154,24 @@ def custom_span(name, **kwargs):
 class SQLiteSession:
     def __init__(self, session_id, db_path=None):
         self.session_id = session_id
+
+
+# Provider / tracing configuration (no-ops in the fake SDK)
+def set_default_openai_client(client, use_for_tracing=True):
+    pass
+
+
+def set_default_openai_api(api):
+    pass
+
+
+def set_tracing_export_api_key(key):
+    pass
+
+
+def add_trace_processor(processor):
+    pass
+
+
+def set_trace_processors(processors):
+    pass

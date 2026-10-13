@@ -14,6 +14,8 @@ from rdi.services.publisher import render_markdown  # noqa: E402
 from rdi.context import RUNS  # noqa: E402
 from rdi.workflows.chat import chat  # noqa: E402
 from rdi.workflows.pipeline import decide_approval, run_research  # noqa: E402
+from rdi import config  # noqa: E402
+from rdi.providers import trace_summary  # noqa: E402
 
 EXAMPLES = [
     "Should Helio Logistics migrate its route-planning service from our on-prem cluster to Stratus Cloud in 2027?",
@@ -58,7 +60,7 @@ def _timeline(events) -> list[list]:
 
 async def on_run(question, outage, fault):
     if not question or not question.strip():
-        return ("Please enter a question.", None, [["-", "-", "-"]], None, "", "", [[0, "-", "-"]], None)
+        return ("Please enter a question.", None, [["-", "-", "-"]], None, "", "", [[0, "-", "-"]], [["-"] * 4], None)
     res = await run_research(question, search_outage=outage, draft_fault=fault)
     report_md = ""
     if res.report:
@@ -75,6 +77,7 @@ async def on_run(question, outage, fault):
         _iterations_md(res),
         report_md,
         _timeline(res.events),
+        trace_summary(res.run_id) or [["-", "-", "no local spans recorded", ""]],
         res.run_id,
     )
 
@@ -101,6 +104,7 @@ async def on_chat(message, history, session_id, run_id):
 with gr.Blocks(title="Research & Decision Intelligence Agent") as demo:
     session_id = gr.State(lambda: uuid.uuid4().hex)
     run_id = gr.State(None)
+    gr.Markdown(f"LLM provider: **{config.PROVIDER_LABEL}** · models: `{config.MODEL_SMART}` / `{config.MODEL_FAST}`")
     gr.Markdown("# 🔎 Research & Decision Intelligence Agent\nPlan → route → parallel research → orchestrator → "
                 "writer ⇄ critic → guardrails → human approval")
 
@@ -120,7 +124,10 @@ with gr.Blocks(title="Research & Decision Intelligence Agent") as demo:
         iterations = gr.Markdown(label="Step 5 · Evaluator-optimizer")
         report = gr.Markdown(label="Final report")
         timeline = gr.Dataframe(headers=["t (s)", "event", "detail"], label="Run timeline (also see the trace)")
-        go.click(on_run, [q, outage, fault], [status, plan_json, routes, findings, iterations, report, timeline, run_id])
+        trace_table = gr.Dataframe(headers=["start", "span type", "name", "ms"],
+                                   label="Trace (local copy of the SDK trace spans for this run)")
+        go.click(on_run, [q, outage, fault],
+                 [status, plan_json, routes, findings, iterations, report, timeline, trace_table, run_id])
 
     with gr.Tab("2 · Human approval"):
         gr.Markdown("High-impact or unresolved reports stop here. Only a named human can approve publishing.")

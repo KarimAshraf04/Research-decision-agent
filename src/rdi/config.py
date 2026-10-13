@@ -22,8 +22,48 @@ CORPUS_PATH = DATA_DIR / "corpus.json"
 SESSION_DB = str(VAR_DIR / "sessions.db")
 APPROVAL_DB = str(VAR_DIR / "approvals.db")
 
-MODEL_FAST = os.getenv("RDI_MODEL_FAST", "gpt-4.1-mini")
-MODEL_SMART = os.getenv("RDI_MODEL_SMART", "gpt-4.1")
+# --- LLM providers -------------------------------------------------------------------------
+# Agents come in two roles, and each role can use a different provider:
+#   smart = Planner, Orchestrator, Report Writer, Critic   (large prompts, quality matters)
+#   fast  = 3 specialists, Research Assistant, Scope classifier (many small calls)
+# Providers: "openai" (paid) | "gemini" (free tier) | "groq" (free tier, small token limits) | "xai" (Grok, paid)
+# Non-OpenAI providers are reached through their OpenAI-compatible endpoints (see rdi/providers.py).
+PROVIDER_PRESETS = {
+    "openai": {"base_url": None, "key_env": "OPENAI_API_KEY",
+               "smart": "gpt-4.1", "fast": "gpt-4.1-mini", "parallel": 4, "page_chars": 6000},
+    "gemini": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "key_env": "GEMINI_API_KEY",
+               "smart": "gemini-3.8-flash", "fast": "gemini-3.8-flash", "parallel": 1, "page_chars": 6000},
+    "groq": {"base_url": "https://api.groq.com/openai/v1", "key_env": "GROQ_API_KEY",
+             "smart": "openai/gpt-oss-120b", "fast": "openai/gpt-oss-120b", "parallel": 1, "page_chars": 2500},
+    "xai": {"base_url": "https://api.x.ai/v1", "key_env": "XAI_API_KEY",
+            "smart": "grok-4", "fast": "grok-4-fast", "parallel": 2, "page_chars": 6000},
+}
+
+
+def _provider(var: str, default: str) -> str:
+    name = (os.getenv(var) or default).strip().lower()
+    if name not in PROVIDER_PRESETS:
+        raise ValueError(f"{var} must be one of {sorted(PROVIDER_PRESETS)}, got '{name}'")
+    return name
+
+
+PROVIDER = _provider("RDI_PROVIDER", "openai")                    # default for both roles
+PROVIDER_SMART = _provider("RDI_PROVIDER_SMART", PROVIDER)
+PROVIDER_FAST = _provider("RDI_PROVIDER_FAST", PROVIDER)
+ROLE_PROVIDER = {"smart": PROVIDER_SMART, "fast": PROVIDER_FAST}
+PROVIDER_LABEL = PROVIDER_SMART if PROVIDER_SMART == PROVIDER_FAST else f"{PROVIDER_SMART} (smart) + {PROVIDER_FAST} (fast)"
+
+
+def provider_key(name: str) -> str:
+    return os.getenv(PROVIDER_PRESETS[name]["key_env"], "")
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")   # optional with other providers: only used to upload traces
+
+MODEL_SMART = os.getenv("RDI_MODEL_SMART") or PROVIDER_PRESETS[PROVIDER_SMART]["smart"]
+MODEL_FAST = os.getenv("RDI_MODEL_FAST") or PROVIDER_PRESETS[PROVIDER_FAST]["fast"]
+_USED = [PROVIDER_PRESETS[n] for n in {PROVIDER_SMART, PROVIDER_FAST}]
+TRACE_DIR = VAR_DIR / "traces"
 
 SEARCH_BACKEND = os.getenv("RDI_SEARCH_BACKEND", "local")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
@@ -33,11 +73,11 @@ MAX_CRITIC_ITERATIONS = int(os.getenv("RDI_MAX_CRITIC_ITERATIONS", "3"))
 CRITIC_PASS_SCORE = int(os.getenv("RDI_CRITIC_PASS_SCORE", "8"))
 
 # Parallelism / robustness
-MAX_PARALLEL = int(os.getenv("RDI_MAX_PARALLEL", "4"))
+MAX_PARALLEL = int(os.getenv("RDI_MAX_PARALLEL") or min(p["parallel"] for p in _USED))  # 1 on free tiers
 AGENT_MAX_TURNS = 14
 STEP_RETRIES = 1                  # extra attempts on invalid structured output / model error
 FETCH_RETRIES = 2                 # retries for flaky page fetches
-MAX_PAGE_CHARS = 6000             # truncation of scraped content handed to the LLM
+MAX_PAGE_CHARS = min(p["page_chars"] for p in _USED)  # page text handed to the LLM (smaller for Groq)
 
 # Tool-level safety: scraping policy
 BLOCKED_DOMAINS = {"localhost", "127.0.0.1", "0.0.0.0", "169.254.169.254", "metadata.google.internal"}

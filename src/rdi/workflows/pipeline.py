@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from agents import InputGuardrailTripwireTriggered, trace
 
-from rdi import config
+from rdi import config, providers
 from rdi.agent_team.planner import planner_agent
 from rdi.agent_team.settings import TRACE_METADATA
 from rdi.context import RUNS, ResearchContext
@@ -29,6 +29,7 @@ from rdi.workflows.routing import route_subquestions
 
 
 async def run_research(question: str, *, search_outage: bool = False, draft_fault: str = "none") -> PipelineResult:
+    providers.configure()
     ctx = ResearchContext(question=question.strip(), fault_search_outage=search_outage, draft_fault=draft_fault)
     RUNS[ctx.run_id] = ctx
     result = PipelineResult(run_id=ctx.run_id, status="failed", message="")

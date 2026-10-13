@@ -6,6 +6,7 @@ model cannot "approve" a report it has just criticised (rule in code, not in the
 from agents import Agent
 
 from rdi import config
+from rdi.providers import model_for
 from rdi.agent_team.prompts import CRITIC
 from rdi.agent_team.settings import model_settings
 from rdi.context import ResearchContext
@@ -14,7 +15,7 @@ from rdi.tools import check_claim_support, retrieve_evidence
 
 critic_agent = Agent[ResearchContext](
     name="Critic",
-    model=config.MODEL_SMART,
+    model=model_for("smart"),
     model_settings=model_settings(config.MODEL_SMART, 0.0),
     instructions=CRITIC,
     tools=[check_claim_support, retrieve_evidence],

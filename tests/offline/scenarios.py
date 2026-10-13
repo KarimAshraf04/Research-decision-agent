@@ -19,12 +19,21 @@ import traceback
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tests/offline/fake_sdk"), str(ROOT / "src")]
 
+import os  # noqa: E402
+
+for _var in ("RDI_PROVIDER", "RDI_PROVIDER_SMART", "RDI_PROVIDER_FAST"):
+    os.environ[_var] = "openai"  # offline: plain model names, whatever .env says
+
 import agents  # noqa: E402  (the FAKE sdk)
 
 from rdi import config  # noqa: E402
 
 _TMP = pathlib.Path(tempfile.mkdtemp(prefix="rdi_scenarios_"))
 config.OUTPUT_DIR, config.APPROVAL_DB, config.SESSION_DB = _TMP, str(_TMP / "approvals.db"), str(_TMP / "s.db")
+
+from rdi import providers  # noqa: E402
+
+providers._configured = True  # offline: never contact a real provider, whatever .env says
 
 from rdi import tools as T  # noqa: E402
 from rdi.agent_team import orchestrator as orch_mod  # noqa: E402

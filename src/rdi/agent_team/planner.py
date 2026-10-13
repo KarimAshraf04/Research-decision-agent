@@ -6,6 +6,7 @@ Output: ResearchPlan (Pydantic) - the structured intermediate output every later
 from agents import Agent
 
 from rdi import config
+from rdi.providers import model_for
 from rdi.agent_team.prompts import PLANNER
 from rdi.agent_team.settings import model_settings, today
 from rdi.context import ResearchContext
@@ -19,7 +20,7 @@ def _instructions(ctx, agent) -> str:
 
 planner_agent = Agent[ResearchContext](
     name="Research Planner",
-    model=config.MODEL_SMART,
+    model=model_for("smart"),
     model_settings=model_settings(config.MODEL_SMART, 0.2),
     instructions=_instructions,
     output_type=ResearchPlan,

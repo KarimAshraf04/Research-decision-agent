@@ -6,6 +6,7 @@ claims and echoed injected text are rejected before the Critic ever sees the dra
 from agents import Agent
 
 from rdi import config
+from rdi.providers import model_for
 from rdi.agent_team.prompts import WRITER
 from rdi.agent_team.settings import model_settings
 from rdi.context import ResearchContext
@@ -15,7 +16,7 @@ from rdi.tools import retrieve_evidence
 
 writer_agent = Agent[ResearchContext](
     name="Report Writer",
-    model=config.MODEL_SMART,
+    model=model_for("smart"),
     model_settings=model_settings(config.MODEL_SMART, 0.3),
     instructions=WRITER,
     tools=[retrieve_evidence],
