@@ -1,4 +1,4 @@
-"""Execution helpers shared by every workflow step (owner: Person A).
+"""Execution helpers shared by every workflow step.
 
 * `run_agent`  - one Runner.run call with timeline hooks + token-usage accounting.
 * `safe_run`   - run_agent with recovery: schema-invalid output, max-turns and API errors are

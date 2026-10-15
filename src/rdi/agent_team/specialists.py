@@ -32,5 +32,5 @@ technical_agent = _make_specialist("Technical Research Specialist")
 market_agent = _make_specialist("Market Research Specialist")
 risk_agent = _make_specialist("Risk & Compliance Specialist")
 
-# Name -> agent. Names must match SPECIALIST_BY_TRACK in workflows/routing.py (Person B).
+# Name -> agent. Names must match SPECIALIST_BY_TRACK in workflows/routing.py.
 SPECIALISTS: dict[str, Agent[ResearchContext]] = {a.name: a for a in (technical_agent, market_agent, risk_agent)}

@@ -1,4 +1,4 @@
-"""Live prompt-evaluation harness for Person A (needs OPENAI_API_KEY).
+"""Live prompt-evaluation harness (needs an LLM API key in .env).
 
 Runs the REAL pipeline on a set of questions and scores each agent against explicit, checkable
 criteria. Use it after every prompt change (agent_team/prompts.py) and compare the reports.
@@ -23,7 +23,7 @@ from rdi import config  # noqa: E402
 from rdi.agent_team.prompts import PROMPT_VERSION  # noqa: E402
 from rdi.workflows.pipeline import run_research  # noqa: E402
 
-# Questions from the LMS corpus (data/corpus.json, Person B). Keep in sync with EXAMPLES in app.py.
+# Questions from the LMS corpus (data/corpus.json). Keep in sync with EXAMPLES in app.py.
 CASES = {
     "migration": dict(question="Should Delta University replace its legacy Campus Classic LMS with Nilo Learn for all "
                                "14 faculties starting fall 2027?", expect_status={"pending_approval", "published"},

@@ -1,7 +1,7 @@
 """Offline checks of the REAL function tools (tools.py) against the REAL corpus (data/corpus.json).
 
 Runs with the FAKE openai-agents SDK (same trick as tests/offline/scenarios.py), so it needs no API key and
-works whether or not the real SDK is installed. Covers demo scenarios owned by Person B:
+works whether or not the real SDK is installed. Covers demo scenarios:
   2 multi-step tools · 7/8 blocked tool · 10 failure + recovery · plus argument validation.
 
     python tests/tool_checks.py          # human readable

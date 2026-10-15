@@ -1,4 +1,4 @@
-"""Offline scenario tests for Person A's layer (agents, guardrails, workflows).
+"""Offline scenario tests for the agent layer (agents, guardrails, workflows).
 
 Runs the REAL pipeline code against a FAKE SDK with scripted agents, so every orchestration
 pattern, guardrail and recovery path is exercised without an API key. The scripted agents call

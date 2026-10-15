@@ -286,4 +286,4 @@ class PipelineResult(BaseModel):
     approval_id: int | None = None
     published_path: str | None = None
     events: list[dict] = []
-    metrics: dict = {}          # duration, per-step seconds, token usage (added by Person A)
+    metrics: dict = {}          # duration, per-step seconds, token usage

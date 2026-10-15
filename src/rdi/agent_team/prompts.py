@@ -1,9 +1,9 @@
-"""All agent instructions in one place (owner: Person A).
+"""All agent instructions in one place.
 
 Why one module?
   * prompt changes are reviewable in a single diff,
   * PROMPT_VERSION is attached to every trace, so a trace can be matched to the prompt that produced it,
-  * prompts are topic-agnostic: changing the research domain only requires a new corpus (Person B).
+  * prompts are topic-agnostic: changing the research domain only requires a new corpus.
 
 Every prompt follows the same layout: Role -> Inputs -> Procedure -> Output rules.
 Rules that MUST hold (citations exist, approval before publish, ...) are enforced in Python as well;

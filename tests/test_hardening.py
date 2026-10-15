@@ -1,4 +1,4 @@
-"""Reliability / safety tests for Person B's layer: URL policy (SSRF), approval queue, publisher, scoring."""
+"""Reliability / safety tests for the deterministic layer: URL policy (SSRF), approval queue, publisher, scoring."""
 import json
 import sqlite3
 import threading

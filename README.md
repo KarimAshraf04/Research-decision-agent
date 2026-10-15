@@ -7,6 +7,8 @@ report, critiques and revises it, and stops for a human before any high-impact r
 > **Core principle:** the LLM decides *what to do*; Python decides *what is allowed*.
 > Everything in `src/rdi/services/` is deterministic, LLM-free and unit-tested.
 
+> 📘 Full documentation with flowcharts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · diagram image: [docs/flowchart.svg](docs/flowchart.svg) · editable: [docs/flowchart.drawio](docs/flowchart.drawio)
+
 ## Quick start
 ```bash
 python -m venv .venv
@@ -87,7 +89,7 @@ User ─► Gradio UI
 | Reliability | retries/backoff (`fetch_with_retry`), `failure_error_function`, `return_exceptions=True`, per-step fallbacks |
 | Bonus: RAG + source-quality scoring | `services/bm25.py`, `EvidenceStore.retrieve`, `services/source_quality.py` (feeds writer, critic, validator) |
 
-## Anti-hallucination design (important for the presentation)
+## Anti-hallucination design
 1. `extract_claims` returns **verbatim sentences** from fetched pages (Python, not the LLM).
 2. `save_evidence` **rejects any quote not found verbatim** in a page fetched in this run → evidence ids (E1…) can't be invented.
 3. Output guardrail rejects drafts citing unknown ids; the validator flags numbers not present in any cited quote.
@@ -113,22 +115,21 @@ Data is the **fictional** corpus in `data/corpus.json` (search backend `local`) 
 
 ## Project layout
 ```
-app.py                          Gradio UI (research · approvals · chat)                       [B]
-data/corpus.json                fictional web corpus (injection, contradictions, dead/flaky)  [B]
-src/rdi/config.py · models.py   settings · Pydantic models                                    [shared]
-src/rdi/context.py · runtime.py run context · safe_run, hooks, usage, step timing             [A]
-src/rdi/agent_team/             prompts.py + one file per agent                               [A]
-src/rdi/guardrails/             input_guardrails.py · output_guardrails.py                    [A]
-src/rdi/workflows/              pipeline.py · parallel_research.py · orchestration.py ·
-                                evaluator_optimizer.py · hitl.py · chat.py                    [A]
-                                routing.py                                                    [B]
-src/rdi/tools.py                function tools (validated args)                               [B]
-src/rdi/ui_helpers.py           pure UI helpers: approvals screen, input validation           [B]
-src/rdi/services/               deterministic layer (search, evidence, policy, approvals...)  [B]
-tests/                          unit tests [B] (+ tool_checks.py, fixtures/) · agent-layer scenarios [A]
-docs/person-b/GUIDE.md          Person B owner's guide (Arabic)
-scripts/                        eval_agents.py · show_agents.py                               [A]
-docs/person-a/GUIDE.md          Person A owner's guide
+app.py                          Gradio UI (research · approvals · chat)
+data/corpus.json                fictional web corpus (injection, contradictions, dead/flaky pages)
+src/rdi/config.py · models.py   settings · Pydantic models
+src/rdi/providers.py            LLM providers, model fallback chain, local tracing
+src/rdi/context.py · runtime.py run context · safe_run, hooks, usage, step timing
+src/rdi/agent_team/             prompts.py + one file per agent
+src/rdi/guardrails/             input_guardrails.py · output_guardrails.py
+src/rdi/workflows/              pipeline · routing · parallel_research · orchestration ·
+                                evaluator_optimizer · hitl · chat
+src/rdi/tools.py                function tools (validated args)
+src/rdi/services/               deterministic layer (search, evidence, policy, approvals...)
+src/rdi/ui_theme.py · ui_helpers.py  UI rendering and helpers
+tests/                          unit tests · tool checks · offline agent scenarios
+scripts/                        check_provider.py · eval_agents.py · show_agents.py
+docs/                           ARCHITECTURE.md / .pdf · flowchart (.svg, .png, .drawio)
 ```
 
 ## Security
