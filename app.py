@@ -70,20 +70,25 @@ def _iterations_md(res) -> str:
         return "_No evaluator iterations in this run._"
     out = []
     for it in res.iterations:
-        out.append(f"#### Iteration {it.iteration}")
+        out.append(f"\n#### Iteration {it.iteration}\n")
         if it.guardrail_blocked:
             out.append(f"⛔ **Output guardrail rejected the draft:** `{it.guardrail_blocked[:400]}`")
             continue
         if it.deterministic_issues:
-            out.append("**Deterministic validator**")
+            out.append("**Deterministic validator**\n")
             out += [f"- `{d.code}` ({d.severity}) {d.detail}" for d in it.deterministic_issues]
         else:
             out.append("**Deterministic validator:** ✅ no issues")
         if it.critique:
             c = it.critique
             badge = "✅ approve" if c.verdict == "approve" else "🔁 revise"
-            out.append(f"**Critic:** {badge} · score **{c.score}/10**")
+            out.append(f"\n**Critic:** {badge} · score **{c.score}/10**\n")
             out += [f"- {i.issue_type} ({i.severity}) @ {i.location}: {i.detail}" for i in c.issues]
+    removed = getattr(res, "removed_findings", None) or []
+    if removed:
+        out.append("\n#### Automatic repair (code)\n")
+        out.append("Removed before human review because their numbers are not in the cited quotes:\n")
+        out += [f"- ~~{s}~~" for s in removed]
     return "\n".join(out)
 
 

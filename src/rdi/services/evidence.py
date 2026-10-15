@@ -154,5 +154,22 @@ def validate_report(report: DecisionReport, store: EvidenceStore) -> list[Valida
     return issues
 
 
+def drop_unsupported_findings(report: DecisionReport, store: EvidenceStore) -> tuple[DecisionReport, list[str]]:
+    """Remove key findings that have no citation or state a number missing from their cited quotes.
+
+    Used after the evaluator loop so a human reviewer never sees an unsupported statistic. Returns the
+    repaired report and the removed statements. If every finding would be removed, nothing is changed.
+    """
+    keep, removed = [], []
+    for f in report.key_findings:
+        cited = [store.get(e) for e in f.evidence_ids if store.get(e)]
+        quote_nums = set(_NUM.findall(" ".join(e.quote for e in cited)))
+        bad_number = any(n not in quote_nums and len(n) > 1 for n in _NUM.findall(f.statement))
+        (removed if not cited or bad_number else keep).append(f)
+    if not removed or not keep:
+        return report, []
+    return report.model_copy(update={"key_findings": keep}), [f.statement for f in removed]
+
+
 def relevant_terms(text: str) -> set[str]:
     return set(tokenize(text))

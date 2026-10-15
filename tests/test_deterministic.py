@@ -7,7 +7,8 @@ from pydantic import ValidationError
 
 from rdi.models import Critique, DecisionReport, Finding, ResearchPlan, SubQuestion
 from rdi.services.approvals import ApprovalQueue
-from rdi.services.evidence import EvidenceStore, FabricatedQuoteError, extract_candidate_claims, validate_report
+from rdi.services.evidence import (EvidenceStore, FabricatedQuoteError, drop_unsupported_findings,
+                                   extract_candidate_claims, validate_report)
 from rdi.services.injection import asks_for_secrets, detect_injection, sanitize_untrusted
 from rdi.services.policy import ActionBlocked, check_url_allowed, decide_path
 from rdi.services.publisher import publish_report
@@ -119,6 +120,20 @@ def test_validator_catches_invented_citation_and_numbers():
     codes = {i.code for i in validate_report(_report("Costs fall 75 percent", ["E1", "E9"]), store)}
     assert {"invented_citation", "unsupported_number"} <= codes
     assert validate_report(_report("Median costs fell 18 percent", ["E1"]), store) == []
+
+
+def test_drop_unsupported_findings_keeps_supported_ones():
+    store = _store_with_study()
+    store.add(STUDY, "cost", "The median infrastructure cost change after 12 months was a reduction of 18 percent.")
+    report = _report("Median costs fell 18 percent", ["E1"])
+    bad = Finding(statement="Costs fall 75 percent", evidence_ids=["E1"], confidence="high")
+    report = report.model_copy(update={"key_findings": report.key_findings + [bad]})
+    repaired, removed = drop_unsupported_findings(report, store)
+    assert removed == ["Costs fall 75 percent"]
+    assert [f.statement for f in repaired.key_findings] == ["Median costs fell 18 percent"]
+    assert validate_report(repaired, store) == []
+    only_bad = report.model_copy(update={"key_findings": [bad]})
+    assert drop_unsupported_findings(only_bad, store) == (only_bad, [])   # never empties the report
 
 
 def test_citations_union_is_repaired():

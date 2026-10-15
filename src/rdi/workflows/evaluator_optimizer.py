@@ -9,6 +9,8 @@ Stop conditions (all in code):
   * MAX_ITER   : iteration budget used (3 on the full path, 2 on the quick path)
   * STAGNATION : the same major issues appear twice in a row - more rounds will not help
 The best draft (fewest major issues, then highest score) is returned, not merely the last one.
+If that draft was not approved, findings whose numbers are not in their cited quotes are removed in code
+before it goes to the human reviewer (the run still stops for review).
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ from rdi.context import ResearchContext
 from rdi.models import (Critique, DecisionReport, IterationRecord, OrchestratorReview, ResearchPlan,
                         SpecialistFindings, ValidationIssue)
 from rdi.runtime import StepFailed, safe_run
-from rdi.services.evidence import validate_report
+from rdi.services.evidence import drop_unsupported_findings, validate_report
 
 # Clearly labelled demo fault injection, applied ONLY to draft 1 when selected in the UI.
 DEMO_DRAFT_FAULTS = {
@@ -41,6 +43,7 @@ class EvaluationOutcome:
     iterations: list[IterationRecord] = field(default_factory=list)
     unresolved_major: int = 0
     stop_reason: str = ""
+    removed_findings: list[str] = field(default_factory=list)
 
 
 def build_research_package(plan: ResearchPlan, findings: list[SpecialistFindings],
@@ -136,5 +139,10 @@ async def write_and_refine(package: str, ctx: ResearchContext, max_iterations: i
 
     if outcome.report is None:
         outcome.stop_reason = "no acceptable draft produced"
+    elif outcome.unresolved_major:
+        outcome.report, outcome.removed_findings = drop_unsupported_findings(outcome.report, ctx.evidence)
+        if outcome.removed_findings:
+            ctx.log("repair", f"Removed {len(outcome.removed_findings)} key finding(s) with numbers not found in "
+                              "their cited quotes", removed=outcome.removed_findings)
     ctx.log("evaluator", f"Stopped: {outcome.stop_reason}")
     return outcome

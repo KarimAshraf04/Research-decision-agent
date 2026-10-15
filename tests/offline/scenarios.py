@@ -239,7 +239,9 @@ async def s_evaluator_stagnation_escalates():
     r = await run_research(QUESTION)
     assert len(r.iterations) == 2 and "stagnation" in r.message, r.message
     assert r.status == "needs_human_review" and r.approval_id
-    return "same major issue twice -> early stop -> human review"
+    assert r.removed_findings == ["A 75 percent improvement"]
+    assert all(f.statement != "A 75 percent improvement" for f in r.report.key_findings)
+    return "same major issue twice -> early stop -> unsupported finding removed in code -> human review"
 
 
 async def s_input_guardrail_deterministic():

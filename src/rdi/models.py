@@ -291,6 +291,7 @@ class PipelineResult(BaseModel):
     orchestrator_review: OrchestratorReview | None = None
     report: DecisionReport | None = None
     iterations: list[IterationRecord] = []
+    removed_findings: list[str] = []   # removed in code after the evaluator loop (unsupported numbers)
     approval_id: int | None = None
     published_path: str | None = None
     events: list[dict] = []

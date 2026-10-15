@@ -85,7 +85,7 @@ async def _run_steps(ctx: ResearchContext, result: PipelineResult) -> None:
     max_iterations = config.MAX_CRITIC_ITERATIONS if path.path == "full" else 2
     with step(ctx, "5_write_and_critique"):
         outcome = await write_and_refine(build_research_package(plan, findings, review, ctx), ctx, max_iterations)
-    result.iterations = outcome.iterations
+    result.iterations, result.removed_findings = outcome.iterations, outcome.removed_findings
     if outcome.report is None:
         result.status = "needs_human_review"
         result.message = "No draft passed the output guardrail; escalated to a human analyst."
