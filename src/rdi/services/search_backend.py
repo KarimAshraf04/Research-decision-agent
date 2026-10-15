@@ -23,10 +23,36 @@ class ToolFailure(Exception):
     """Recoverable tool failure (network, timeout, missing page)."""
 
 
-class LocalCorpusBackend:
-    def __init__(self, path=config.CORPUS_PATH):
+REQUIRED_PAGE_FIELDS = ("url", "title", "publisher", "content")
+
+
+def load_corpus(path) -> list[dict]:
+    """Load + validate the fictional corpus. Fails early with a readable message (not a stack trace in the UI)."""
+    try:
         with open(path, encoding="utf-8") as f:
-            self.pages: list[dict] = json.load(f)["pages"]
+            data = json.load(f)
+    except FileNotFoundError as e:
+        raise ToolFailure(f"Corpus file not found: {path}") from e
+    except json.JSONDecodeError as e:
+        raise ToolFailure(f"Corpus file is not valid JSON ({path}): {e}") from e
+    pages = data.get("pages") if isinstance(data, dict) else None
+    if not isinstance(pages, list) or not pages:
+        raise ToolFailure(f"Corpus {path} must be an object with a non-empty 'pages' list.")
+    seen: set[str] = set()
+    for i, p in enumerate(pages):
+        missing = [k for k in REQUIRED_PAGE_FIELDS if not isinstance(p.get(k), str) or not p[k].strip()]
+        if missing:
+            raise ToolFailure(f"Corpus page #{i} is missing/empty fields: {missing}")
+        if p["url"] in seen:
+            raise ToolFailure(f"Corpus has a duplicate url: {p['url']}")
+        seen.add(p["url"])
+    return pages
+
+
+class LocalCorpusBackend:
+    def __init__(self, path=None):
+        # resolved at call time (not import time) so tests / scenarios can redirect config.CORPUS_PATH
+        self.pages: list[dict] = load_corpus(path or config.CORPUS_PATH)
         self.by_url = {p["url"]: p for p in self.pages}
         self.index = BM25([p["title"] + " " + p["publisher"] + " " + p["content"] for p in self.pages])
 

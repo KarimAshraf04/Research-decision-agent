@@ -6,6 +6,9 @@ Python decides whether publishing is allowed - the agent can ask, but cannot byp
 """
 from __future__ import annotations
 
+import os
+import re
+
 from rdi import config
 from rdi.models import DecisionReport
 from rdi.services.approvals import ApprovalQueue
@@ -46,6 +49,9 @@ def publish_report(run_id: str, report: DecisionReport, store: EvidenceStore, re
         if not approval or approval["status"] != "approved":
             state = approval["status"] if approval else "missing"
             raise ActionBlocked(f"Publishing blocked: this run requires human approval (current status: {state}).")
-    path = config.OUTPUT_DIR / f"report_{run_id}.md"
-    path.write_text(render_markdown(report, store, approval), encoding="utf-8")
+    safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", str(run_id))[:64] or "run"   # no path traversal via run_id
+    path = config.OUTPUT_DIR / f"report_{safe_id}.md"
+    tmp = path.with_suffix(".md.tmp")
+    tmp.write_text(render_markdown(report, store, approval), encoding="utf-8")
+    os.replace(tmp, path)   # atomic: a crash can never leave a half-written "published" report
     return str(path)

@@ -18,7 +18,7 @@ OUTPUT_DIR = ROOT / "outputs"   # published reports - gitignored
 VAR_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-CORPUS_PATH = DATA_DIR / "corpus.json"
+CORPUS_PATH = Path(os.getenv("RDI_CORPUS_PATH") or DATA_DIR / "corpus.json")  # tests can point this elsewhere
 SESSION_DB = str(VAR_DIR / "sessions.db")
 APPROVAL_DB = str(VAR_DIR / "approvals.db")
 
@@ -87,4 +87,6 @@ ALLOWED_SCHEMES = {"https", "http"}
 SENSITIVE_KEYWORDS = {
     "layoff", "lay off", "fire ", "medical", "diagnos", "legal", "lawsuit",
     "invest", "acquisition", "acquire", "merger", "security breach",
+    # university / LMS topic: decisions that expose student data or touch staff jobs need a human
+    "student records", "student data", "grade data", "personal data", "redundan", "staff cuts",
 }

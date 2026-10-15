@@ -98,7 +98,7 @@ Data is the **fictional** corpus in `data/corpus.json` (search backend `local`) 
 
 | # | Scenario | How to trigger | What to show |
 |---|---|---|---|
-| 1 | Happy path | Example 2 (CodePilot X) | Status ✅ Published, report |
+| 1 | Happy path | Example 2 (Atlas Open pilot) | Status ✅ Published, report |
 | 2 | ≥3 sequential steps/tools | Any full run | Timeline: search → scrape → extract → save; plan → research → write |
 | 3 | Routing | Example 1 | Routing table incl. code-added `SQ-RISK`; Example 3 takes the *quick* path |
 | 4 | Parallelization | Any full run | Interleaved `parallel start/done` events + parallel spans in trace |
@@ -122,9 +122,11 @@ src/rdi/guardrails/             input_guardrails.py · output_guardrails.py     
 src/rdi/workflows/              pipeline.py · parallel_research.py · orchestration.py ·
                                 evaluator_optimizer.py · hitl.py · chat.py                    [A]
                                 routing.py                                                    [B]
-src/rdi/tools.py                function tools                                                [B]
+src/rdi/tools.py                function tools (validated args)                               [B]
+src/rdi/ui_helpers.py           pure UI helpers: approvals screen, input validation           [B]
 src/rdi/services/               deterministic layer (search, evidence, policy, approvals...)  [B]
-tests/                          unit tests [B] · agent-layer scenarios [A]
+tests/                          unit tests [B] (+ tool_checks.py, fixtures/) · agent-layer scenarios [A]
+docs/person-b/GUIDE.md          Person B owner's guide (Arabic)
 scripts/                        eval_agents.py · show_agents.py                               [A]
 docs/person-a/GUIDE.md          Person A owner's guide
 ```

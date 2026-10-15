@@ -81,6 +81,8 @@ class EvidenceStore:
         return item
 
     def get(self, eid: str) -> EvidenceItem | None:
+        if not isinstance(eid, str):
+            return None
         return self.items.get(eid.strip().upper())
 
     def retrieve(self, query: str, k: int = 5) -> list[EvidenceItem]:

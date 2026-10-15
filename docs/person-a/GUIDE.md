@@ -70,7 +70,7 @@ iterations (3 full / 2 quick), stagnation (same major issues twice in a row). Th
 
 ## 4. Tuning workflow (Tue–Wed)
 
-1. Wait for Person B's new `corpus.json`, then replace `CASES` in `scripts/eval_agents.py` with questions from it.
+1. `CASES` in `scripts/eval_agents.py` already use the LMS questions from Person B's corpus.
 2. Baseline: `python scripts/eval_agents.py` → `outputs/eval_<time>.md`.
 3. Change **one** prompt in `prompts.py`, bump `PROMPT_VERSION` (`a-1.1`, …), re-run, compare scores.
 4. Open the failing runs in the OpenAI Traces dashboard (filter by run id) to see *why*.

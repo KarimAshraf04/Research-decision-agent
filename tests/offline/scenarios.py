@@ -30,6 +30,9 @@ from rdi import config  # noqa: E402
 
 _TMP = pathlib.Path(tempfile.mkdtemp(prefix="rdi_scenarios_"))
 config.OUTPUT_DIR, config.APPROVAL_DB, config.SESSION_DB = _TMP, str(_TMP / "approvals.db"), str(_TMP / "s.db")
+# The scripted agents above search for the logistics/Stratus topic -> pin them to the frozen fixture corpus,
+# so these scenarios keep passing no matter which topic data/corpus.json is rewritten to.
+config.CORPUS_PATH = ROOT / "tests" / "fixtures" / "corpus_logistics.json"
 
 from rdi import providers  # noqa: E402
 

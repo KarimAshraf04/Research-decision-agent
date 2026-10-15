@@ -1,5 +1,6 @@
 """Unit tests for the deterministic layer (no API key needed).  Run: pytest -q"""
 import asyncio
+import pathlib
 
 import pytest
 from pydantic import ValidationError
@@ -14,7 +15,10 @@ from rdi.services.search_backend import LocalCorpusBackend, ToolFailure, fetch_w
 from rdi.services.source_quality import score_source
 from rdi.workflows.routing import route_subquestions
 
+# These tests run against the FROZEN fixture corpus (see conftest.py), not data/corpus.json,
+# so they keep passing whatever topic the real corpus is rewritten to. Corpus checks: tests/test_corpus.py
 STUDY = "https://journal.cloudops-research.example/stratus-migration-study-2026"
+FIXTURE_CORPUS = pathlib.Path(__file__).parent / "fixtures" / "corpus_logistics.json"
 
 
 def _plan(tracks=("technical", "market"), impact="medium"):
@@ -27,7 +31,7 @@ def _plan(tracks=("technical", "market"), impact="medium"):
 
 
 def _store_with_study():
-    backend = LocalCorpusBackend()
+    backend = LocalCorpusBackend(FIXTURE_CORPUS)
     page = asyncio.run(backend.fetch(STUDY, 0))
     page.quality = 0.9
     store = EvidenceStore()

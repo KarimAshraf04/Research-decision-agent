@@ -25,9 +25,9 @@ def score_source(source_type: str, published: str, author: str, injection_detect
             score -= 0.15
         elif age_years > 1.5:
             score -= 0.05
-    except ValueError:
-        score -= 0.05  # unknown date
-    if not author or author.lower() in {"guest author", "anonymous"}:
+    except (ValueError, TypeError):
+        score -= 0.05  # unknown / malformed date
+    if not author or str(author).lower() in {"guest author", "anonymous"}:
         score -= 0.05
     if injection_detected:
         score = min(score, 0.10)  # a page that tries to manipulate the agent is not evidence

@@ -36,6 +36,14 @@ def _err(msg: str, **data) -> str:
     return json.dumps({"ok": False, "error": msg, **data}, ensure_ascii=False)
 
 
+def _clean_ids(evidence_ids, limit: int = 12) -> list[str]:
+    """Validate a model-supplied id list: list of 'E<n>' strings, de-duplicated, bounded."""
+    if not isinstance(evidence_ids, (list, tuple)):
+        return []
+    out = [i.strip().upper() for i in evidence_ids if isinstance(i, str) and i.strip()]
+    return list(dict.fromkeys(out))[:limit]
+
+
 # --------------------------------------------------------------------------------------
 @function_tool(failure_error_function=_tool_error)
 async def search_web(ctx: RunContextWrapper[ResearchContext], query: str, max_results: int) -> str:
@@ -46,10 +54,13 @@ async def search_web(ctx: RunContextWrapper[ResearchContext], query: str, max_re
         max_results: Number of results to return (1-8).
     """
     c = ctx.context
-    query = query.strip()
+    query = (query or "").strip() if isinstance(query, str) else ""
     if not 2 <= len(query) <= 200:
         return _err("Query must be between 2 and 200 characters.")
-    k = max(1, min(8, int(max_results)))
+    try:
+        k = max(1, min(8, int(max_results)))
+    except (TypeError, ValueError):
+        k = 5  # malformed argument -> safe default instead of a crash
     c._search_calls += 1
     if c.fault_search_outage and c._search_calls == 1:
         c.log("tool_failure", "search_web: simulated outage (HTTP 503) - agent should retry", query=query)
@@ -72,6 +83,7 @@ async def scrape_page(ctx: RunContextWrapper[ResearchContext], url: str) -> str:
         url: Absolute http(s) URL, normally taken from search_web results.
     """
     c = ctx.context
+    url = url.strip() if isinstance(url, str) else ""
     try:
         check_url_allowed(url)                      # TOOL-LEVEL GUARDRAIL (deterministic)
     except ActionBlocked as e:
@@ -116,11 +128,17 @@ async def extract_claims(ctx: RunContextWrapper[ResearchContext], url: str, focu
         url: URL previously opened with scrape_page.
         focus: What the claims should be about, e.g. the sub-question.
     """
+    url = url.strip() if isinstance(url, str) else ""
     page = ctx.context.evidence.pages.get(url)
     if page is None:
         return _err("Page not scraped yet. Call scrape_page first.")
+    focus = (focus or "").strip()[:300] if isinstance(focus, str) else ""
+    if not focus:
+        return _err("`focus` is required: say what the claims should be about.")
     claims = extract_candidate_claims(page, focus)
     ctx.context.log("tool", f"extract_claims({url}) -> {len(claims)} candidates")
+    if not claims:
+        return _err("No usable sentences found on this page for that focus. Try another source.")
     return _ok(url=url, quality=page.quality, injection_flagged=page.injection_detected,
                candidate_quotes=claims,
                instruction="Pass one of these quotes EXACTLY to save_evidence to obtain an evidence id.")
@@ -136,6 +154,11 @@ async def save_evidence(ctx: RunContextWrapper[ResearchContext], url: str, claim
         quote: Exact sentence copied from extract_claims output.
     """
     c = ctx.context
+    url = url.strip() if isinstance(url, str) else ""
+    if not isinstance(claim, str) or not 5 <= len(claim.strip()) <= 400:
+        return _err("`claim` must be a one-sentence paraphrase (5-400 characters).", rejected=True)
+    if not isinstance(quote, str) or len(quote) > 1500:
+        return _err("`quote` must be one exact sentence from extract_claims (max 1500 characters).", rejected=True)
     try:
         item = c.evidence.add(url, claim, quote, saved_by=ctx.context.run_id)
     except FabricatedQuoteError as e:
@@ -153,6 +176,7 @@ async def compare_sources(ctx: RunContextWrapper[ResearchContext], evidence_ids:
         evidence_ids: Two or more evidence ids, e.g. ["E1", "E4"].
     """
     store = ctx.context.evidence
+    evidence_ids = _clean_ids(evidence_ids)
     items = [store.get(e) for e in evidence_ids]
     missing = [e for e, i in zip(evidence_ids, items) if i is None]
     items = [i for i in items if i]
@@ -174,7 +198,9 @@ async def retrieve_evidence(ctx: RunContextWrapper[ResearchContext], query: str)
     Args:
         query: What you need evidence about.
     """
-    items = ctx.context.evidence.retrieve(query, k=6)
+    if not isinstance(query, str) or not query.strip():
+        return _err("`query` is required.")
+    items = ctx.context.evidence.retrieve(query.strip()[:300], k=6)
     return _ok(evidence=[i.model_dump(exclude={"saved_by"}) for i in items])
 
 
@@ -187,6 +213,9 @@ async def check_claim_support(ctx: RunContextWrapper[ResearchContext], statement
         evidence_ids: Evidence ids cited for the claim.
     """
     store = ctx.context.evidence
+    if not isinstance(statement, str) or not statement.strip():
+        return _err("`statement` is required.")
+    evidence_ids = _clean_ids(evidence_ids)
     found = [store.get(e) for e in evidence_ids if store.get(e)]
     unknown = [e for e in evidence_ids if store.get(e) is None]
     nums = re.findall(r"\d+(?:\.\d+)?", statement)
