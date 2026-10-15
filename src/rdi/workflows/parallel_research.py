@@ -46,7 +46,7 @@ async def run_specialists_in_parallel(plan: ResearchPlan, routes: list[RouteDeci
     collected: list[SpecialistFindings] = []
     for route, outcome in zip(routes, outcomes):
         if isinstance(outcome, BaseException):
-            ctx.log("recovery", f"{route.subquestion_id} failed ({type(outcome).__name__}); continuing without it")
+            ctx.log("recovery", f"{route.subquestion_id} failed: {str(outcome)[:300]}; continuing without it")
         else:
             collected.append(outcome)
     return collected

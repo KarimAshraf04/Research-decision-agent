@@ -69,7 +69,9 @@ async def _run_steps(ctx: ResearchContext, result: PipelineResult) -> None:
     with step(ctx, "3_parallel_research", branches=len(routes)):
         result.findings = findings = await run_specialists_in_parallel(plan, routes, ctx)
     if not findings:
-        result.message = "All specialists failed; no evidence was collected. Please retry later."
+        reasons = [e["message"] for e in ctx.events if e["kind"] == "recovery" and " failed: " in e["message"]]
+        result.message = ("All specialists failed; no evidence was collected. Please retry later."
+                          + (f"\n\nFirst error: {reasons[0]}" if reasons else ""))
         return
 
     # 4 ─ ORCHESTRATOR-WORKERS (full path only) ──────────────────────────────────────────────────

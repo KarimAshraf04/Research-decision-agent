@@ -145,6 +145,15 @@ def on_decide(approval_id, reviewer, note, approve: bool, view="pending"):
 
 
 # ------------------------------------------------------------------ chat tab
+
+def _chatbot(**kwargs):
+    """Gradio 4/5 need type="messages"; Gradio 6 removed the argument (messages is the only format)."""
+    try:
+        return gr.Chatbot(type="messages", **kwargs)
+    except TypeError:
+        return gr.Chatbot(**kwargs)
+
+
 async def on_chat(message, history, session_id, run_id):
     history = history or []
     try:
@@ -217,7 +226,7 @@ with gr.Blocks(title="Research & Decision Intelligence Agent") as demo:
     with gr.Tab("3 · Follow-up chat (memory)"):
         gr.Markdown("Ask about the latest run. Conversation memory is kept in a SQLiteSession. "
                     "Try: *“publish the report”* (protected action) or *“read http://169.254.169.254/latest”* (blocked tool).")
-        bot = gr.Chatbot(type="messages", height=420)
+        bot = _chatbot(height=420)
         msg = gr.Textbox(label="Message")
         msg.submit(on_chat, [msg, bot, session_id, run_id], [msg, bot])
 

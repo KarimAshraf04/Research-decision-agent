@@ -18,6 +18,15 @@ from rdi import config
 from rdi.context import ResearchContext
 
 
+RATE_LIMIT_WAIT_S = 20
+
+
+def is_rate_limit(e: BaseException) -> bool:
+    """HTTP 429 / quota errors from any provider (free tiers hit these often)."""
+    text = f"{type(e).__name__} {e}"
+    return "RateLimit" in text or "429" in text or "RESOURCE_EXHAUSTED" in text or "quota" in text.lower()
+
+
 class StepFailed(Exception):
     """A pipeline step failed after all retries. The caller decides how to degrade."""
 
@@ -92,8 +101,13 @@ async def safe_run(agent, task: str, ctx: ResearchContext, *, step: str, retries
             attempt_task = f"{task}\n\n## BUDGET\nYou ran out of steps last time. Use at most 6 tool calls, then answer."
             last_error = e
         except Exception as e:  # API errors, rate limits, timeouts
-            ctx.log("recovery", f"{step}: {type(e).__name__}: {str(e)[:160]}; backing off")
-            await asyncio.sleep(1.5 * (2 ** attempt))
+            if is_rate_limit(e):
+                wait = RATE_LIMIT_WAIT_S * (attempt + 1)
+                ctx.log("recovery", f"{step}: provider rate limit / quota (429); waiting {wait}s before retrying")
+                await asyncio.sleep(wait)
+            else:
+                ctx.log("recovery", f"{step}: {type(e).__name__}: {str(e)[:160]}; backing off")
+                await asyncio.sleep(1.5 * (2 ** attempt))
             last_error = e
     raise StepFailed(f"{step} failed after {retries + 1} attempt(s): {type(last_error).__name__}: {last_error}")
 
