@@ -7,7 +7,7 @@ report, critiques and revises it, and stops for a human before any high-impact r
 > **Core principle:** the LLM decides *what to do*; Python decides *what is allowed*.
 > Everything in `src/rdi/services/` is deterministic, LLM-free and unit-tested.
 
-> 📘 Full documentation with flowcharts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · diagram image: [docs/flowchart.svg](docs/flowchart.svg) · editable: [docs/flowchart.drawio](docs/flowchart.drawio)
+> 📘 Documentation: [docs/documentation.pdf](docs/documentation.pdf) · architecture diagram (draw.io): [docs/architecture.drawio](docs/architecture.drawio)
 
 ## Quick start
 ```bash
@@ -129,7 +129,7 @@ src/rdi/services/               deterministic layer (search, evidence, policy, a
 src/rdi/ui_theme.py · ui_helpers.py  UI rendering and helpers
 tests/                          unit tests · tool checks · offline agent scenarios
 scripts/                        check_provider.py · eval_agents.py · show_agents.py
-docs/                           ARCHITECTURE.md / .pdf · flowchart (.svg, .png, .drawio)
+docs/                           documentation.pdf · architecture.drawio
 ```
 
 ## Security
