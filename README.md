@@ -16,7 +16,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 cp .env.example .env                       # Windows: copy .env.example .env  -> then add your key(s) in .env
 python scripts/check_provider.py           # ~20 s check: plain answer, tools, structured output, tools+structured
-python -m pytest -q                        # unit tests + 14 agent-layer scenarios (no API key needed)
+python -m pytest -q                        # unit tests + 15 agent-layer scenarios (no API key needed)
 python app.py                              # UI on http://127.0.0.1:7860
 ```
 

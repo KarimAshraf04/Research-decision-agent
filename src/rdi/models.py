@@ -204,6 +204,14 @@ class Critique(BaseModel):
         return self
 
 
+class ChatReply(BaseModel):
+    """Follow-up chat answer. Python decides what is shown (see workflows/chat.py)."""
+
+    in_scope: bool = Field(description="True only if the message is about the loaded research run")
+    answer: str = Field(description="Short, exact answer grounded in saved evidence or a tool result")
+    evidence_ids: list[str] = Field(default_factory=list, description="Evidence ids the answer relies on")
+
+
 class ScopeCheck(BaseModel):
     """Output of the LLM guardrail classifier."""
 

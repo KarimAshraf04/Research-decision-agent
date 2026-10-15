@@ -42,7 +42,7 @@ providers._configured = True  # offline: never contact a real provider, whatever
 from rdi import tools as T  # noqa: E402
 from rdi.agent_team import orchestrator as orch_mod  # noqa: E402
 from rdi.context import RUNS  # noqa: E402
-from rdi.models import (Critique, CritiqueIssue, DecisionReport, Finding, OptionAssessment,  # noqa: E402
+from rdi.models import (ChatReply, Critique, CritiqueIssue, DecisionReport, Finding, OptionAssessment,  # noqa: E402
                         OrchestratorReview, ResearchPlan, ScopeCheck, SpecialistFindings, SubQuestion, Conflict)
 from rdi.workflows.chat import chat  # noqa: E402
 from rdi.workflows.pipeline import decide_approval, run_research  # noqa: E402
@@ -142,6 +142,13 @@ async def critic(task, w, agent):
 
 
 async def assistant(task, w, agent):
+    if "poem" in task:
+        return ChatReply(in_scope=False, answer="Roses are red...")
+    if "invented" in task:
+        return ChatReply(in_scope=True, answer="Capacity is 90,000 users [E99].", evidence_ids=["E99"])
+    if "risk" in task:
+        eid = next(iter(w.context.evidence.items))
+        return ChatReply(in_scope=True, answer=f"The main risk is data migration [{eid}].", evidence_ids=[eid])
     return await T.publish_report(w)
 
 
@@ -288,11 +295,23 @@ async def s_hitl_end_to_end():
     return "pending -> chat publish blocked -> human approves -> published; double decision refused"
 
 
+async def s_chat_scope():
+    from rdi.workflows import chat as chat_mod
+    assert await chat("what is the capital of France?", "s-none", None) == chat_mod.NO_RUN_REPLY
+    reset_state()
+    r = await run_research(QUESTION)
+    assert await chat("write me a poem", "s-2", r.run_id) == chat_mod.OFF_TOPIC_REPLY
+    assert await chat("is the invented number right?", "s-2", r.run_id) == chat_mod.UNVERIFIED_REPLY
+    ok = await chat("what are the main risks?", "s-2", r.run_id)
+    assert ok.startswith("The main risk") and "[E" in ok
+    return "no run -> fixed reply; off-topic refused; unknown evidence id refused; grounded answer shown"
+
+
 SCENARIOS = [s_happy_path, s_routing_code_rules, s_parallel_fan_out, s_orchestrator_delegates,
              s_delegation_budget_enforced, s_evaluator_rejects_then_approves, s_output_guardrail_blocks_draft,
              s_evaluator_stagnation_escalates, s_input_guardrail_deterministic, s_input_guardrail_llm_scope,
              s_specialist_guardrail_retry, s_tool_failure_recovery, s_branch_failure_degrades_gracefully,
-             s_hitl_end_to_end]
+             s_hitl_end_to_end, s_chat_scope]
 
 
 async def main() -> list[dict]:
