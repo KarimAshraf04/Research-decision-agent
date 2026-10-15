@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from agents import (InputGuardrailTripwireTriggered, MaxTurnsExceeded, ModelBehaviorError,
                     OutputGuardrailTripwireTriggered, RunHooks, Runner, custom_span)
 
-from rdi import config
+from rdi import config, providers
 from rdi.context import ResearchContext
 
 
@@ -57,7 +57,11 @@ def record_usage(ctx: ResearchContext, result) -> None:
 
 
 async def run_agent(agent, task, ctx: ResearchContext, *, max_turns: int = config.AGENT_MAX_TURNS, session=None):
-    result = await Runner.run(agent, task, context=ctx, max_turns=max_turns, hooks=HOOKS, session=session)
+    try:
+        result = await Runner.run(agent, task, context=ctx, max_turns=max_turns, hooks=HOOKS, session=session)
+    finally:
+        for notice in providers.drain_notices():  # model fallbacks become visible on the run timeline
+            ctx.log("fallback", notice)
     record_usage(ctx, result)
     return result
 

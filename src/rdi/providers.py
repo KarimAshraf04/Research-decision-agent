@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections import defaultdict
 
 from rdi import config
@@ -101,20 +102,105 @@ def _client(provider: str):
         _clients[provider] = AsyncOpenAI(
             base_url=preset["base_url"],
             api_key=config.provider_key(provider) or "missing-key",  # configure() reports missing keys clearly
-            max_retries=6,  # the client backs off automatically on HTTP 429 (free-tier rate limits)
+            max_retries=2,  # short: on repeated 429s the FallbackModel switches model instead of waiting
         )
     return _clients[provider]
 
 
-def model_for(role: str):
-    """Model for an agent role ('smart' or 'fast'): a name for OpenAI, a bound model object otherwise."""
-    provider = config.ROLE_PROVIDER[role]
-    name = config.MODEL_SMART if role == "smart" else config.MODEL_FAST
+# ------------------------------------------------------------------ automatic model fallback
+FALLBACK_COOLDOWN_S = {"quota": 600, "rate": 60, "unavailable": 60, "not_found": 3600, "incapable": 3600,
+                       "auth": 3600, "other": 30}
+_cooling_until: dict[str, float] = {}
+_notices: list[str] = []
+
+
+def classify_failure(e: BaseException) -> str:
+    text = f"{type(e).__name__} {e}".lower()
+    if "quota" in text or "resource_exhausted" in text:
+        return "quota"
+    if "429" in text or "ratelimit" in text or "rate limit" in text:
+        return "rate"
+    if "404" in text or "notfound" in text or "not found" in text:
+        return "not_found"
+    if "json_validate_failed" in text or "cannot be combined" in text or "not supported" in text:
+        return "incapable"
+    if "api key" in text or "401" in text or "403" in text or "permission" in text:
+        return "auth"
+    if any(s in text for s in ("500", "502", "503", "504", "overloaded", "unavailable", "timeout")):
+        return "unavailable"
+    return "other"
+
+
+def drain_notices() -> list[str]:
+    out = list(_notices)
+    _notices.clear()
+    return out
+
+
+async def call_with_fallback(chain: list, call, now=time.monotonic):
+    """Try `call(model)` on each (label, model) in order, skipping models that are cooling down.
+
+    On failure the model cools down (10 min for quota, 1 h if it is incapable/not found ...) and the next one
+    is tried. If every model is cooling down they are all tried anyway. The last error is re-raised.
+    """
+    t = now()
+    ready = [c for c in chain if _cooling_until.get(c[0], 0) <= t] or list(chain)
+    last_error: BaseException | None = None
+    for i, (label, model) in enumerate(ready):
+        try:
+            result = await call(model)
+            if i:
+                _notices.append(f"answered by fallback model {label}")
+            return result
+        except Exception as e:  # noqa: BLE001 - provider errors of every kind trigger the fallback
+            kind = classify_failure(e)
+            _cooling_until[label] = now() + FALLBACK_COOLDOWN_S[kind]
+            nxt = ready[i + 1][0] if i + 1 < len(ready) else None
+            _notices.append(f"model {label} failed ({kind}: {str(e)[:120]})" +
+                            (f" -> switching to {nxt}" if nxt else " -> no fallback left"))
+            last_error = e
+    raise last_error  # type: ignore[misc]
+
+
+def _single_model(provider: str, name: str, as_object: bool):
     if provider == "openai":
-        return name
+        if not as_object:
+            return name
+        from agents import OpenAIProvider
+
+        return OpenAIProvider().get_model(name)
     from agents import OpenAIChatCompletionsModel
 
     return OpenAIChatCompletionsModel(model=name, openai_client=_client(provider))
+
+
+def model_for(role: str):
+    """Model for an agent role ('smart' or 'fast').
+
+    One model  -> a model name (OpenAI) or a bound OpenAIChatCompletionsModel (other providers).
+    Several    -> a FallbackModel that switches to the next model when one fails (quota, 429, 404, ...).
+    """
+    chain = config.role_chain(role)
+    if len(chain) == 1:
+        return _single_model(*chain[0], as_object=False)
+    from agents import Model
+
+    class FallbackModel(Model):
+        def __init__(self, entries):
+            self.entries = entries
+            self.model = " → ".join(label for label, _ in entries)  # shown in the agent table / UI
+
+        async def get_response(self, *args, **kwargs):
+            return await call_with_fallback(self.entries, lambda m: m.get_response(*args, **kwargs))
+
+        def stream_response(self, *args, **kwargs):  # streaming is not used by this project
+            return self.entries[0][1].stream_response(*args, **kwargs)
+
+    return FallbackModel([(f"{p}:{n}", _single_model(p, n, as_object=True)) for p, n in chain])
+
+
+def chain_label(role: str) -> str:
+    return " → ".join(n if p == config.ROLE_PROVIDER[role] else f"{p}:{n}" for p, n in config.role_chain(role))
 
 
 def missing_keys() -> list[str]:

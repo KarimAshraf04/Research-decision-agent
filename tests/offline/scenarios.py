@@ -23,6 +23,7 @@ import os  # noqa: E402
 
 for _var in ("RDI_PROVIDER", "RDI_PROVIDER_SMART", "RDI_PROVIDER_FAST"):
     os.environ[_var] = "openai"  # offline: plain model names, whatever .env says
+os.environ["RDI_FALLBACK_MODELS"] = "none"  # offline: no fallback chain, whatever .env says
 
 import agents  # noqa: E402  (the FAKE sdk)
 

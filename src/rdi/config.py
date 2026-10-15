@@ -32,7 +32,7 @@ PROVIDER_PRESETS = {
     "openai": {"base_url": None, "key_env": "OPENAI_API_KEY",
                "smart": "gpt-4.1", "fast": "gpt-4.1-mini", "parallel": 4, "page_chars": 6000},
     "gemini": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "key_env": "GEMINI_API_KEY",
-               "smart": "gemini-3.8-flash", "fast": "gemini-3.8-flash", "parallel": 1, "page_chars": 6000},
+               "smart": "gemini-3.8-flash", "fast": "gemini-3.6-flash", "parallel": 1, "page_chars": 6000},
     "groq": {"base_url": "https://api.groq.com/openai/v1", "key_env": "GROQ_API_KEY",
              "smart": "openai/gpt-oss-120b", "fast": "openai/gpt-oss-120b", "parallel": 1, "page_chars": 2500},
     "xai": {"base_url": "https://api.x.ai/v1", "key_env": "XAI_API_KEY",
@@ -62,6 +62,43 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")   # optional with other provide
 
 MODEL_SMART = os.getenv("RDI_MODEL_SMART") or PROVIDER_PRESETS[PROVIDER_SMART]["smart"]
 MODEL_FAST = os.getenv("RDI_MODEL_FAST") or PROVIDER_PRESETS[PROVIDER_FAST]["fast"]
+
+# --- Automatic model fallback -------------------------------------------------------------
+# When a model fails (free-tier quota/429, overloaded, not found, cannot do tools+structured output)
+# the next model in the chain is used automatically (rdi/providers.py::FallbackModel).
+# RDI_FALLBACK_MODELS: comma list of "provider:model" or "model" (= same provider as the role); "none" disables.
+DEFAULT_FALLBACKS = {
+    # each Gemini model has its own free-tier quota -> chaining them multiplies the free budget
+    "gemini": ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    "groq": ["gemini:gemini-3.6-flash", "gemini:gemini-3.5-flash-lite"],  # Groq cannot do tools+structured output
+    "openai": [], "xai": [],
+}
+
+
+def _parse_entry(entry: str, default_provider: str) -> tuple[str, str]:
+    entry = entry.strip()
+    if ":" in entry and entry.split(":", 1)[0].strip().lower() in PROVIDER_PRESETS:
+        prov, name = entry.split(":", 1)
+        return prov.strip().lower(), name.strip()
+    return default_provider, entry
+
+
+def role_chain(role: str) -> list[tuple[str, str]]:
+    """Ordered (provider, model) list for a role: the primary model first, then the fallbacks."""
+    provider = ROLE_PROVIDER[role]
+    primary = (provider, MODEL_SMART if role == "smart" else MODEL_FAST)
+    raw = os.getenv("RDI_FALLBACK_MODELS")
+    if raw is not None and raw.strip().lower() in ("none", "off", "false", "0"):
+        entries = []
+    elif raw and raw.strip():
+        entries = [_parse_entry(e, provider) for e in raw.split(",") if e.strip()]
+    else:
+        entries = [_parse_entry(e, provider) for e in DEFAULT_FALLBACKS.get(provider, [])]
+    chain = [primary]
+    for prov, name in entries:
+        if (prov, name) not in chain and (prov == provider or provider_key(prov)):  # skip providers without a key
+            chain.append((prov, name))
+    return chain
 _USED = [PROVIDER_PRESETS[n] for n in {PROVIDER_SMART, PROVIDER_FAST}]
 TRACE_DIR = VAR_DIR / "traces"
 

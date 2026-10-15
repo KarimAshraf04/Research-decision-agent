@@ -41,8 +41,7 @@ def add(a: int, b: int) -> int:
 
 async def check_role(role: str) -> bool:
     model = providers.model_for(role)
-    name = config.MODEL_SMART if role == "smart" else config.MODEL_FAST
-    print(f"\n[{role}] provider={config.ROLE_PROVIDER[role]} model={name}")
+    print(f"\n[{role}] provider={config.ROLE_PROVIDER[role]} models (fallback order): {providers.chain_label(role)}")
     checks = [
         ("plain answer", Agent(name="ping", model=model, instructions="Answer in one word."), "Say OK."),
         ("tool calling", Agent(name="calc", model=model, tools=[add],
@@ -56,8 +55,9 @@ async def check_role(role: str) -> bool:
     ok = True
     for label, agent, prompt in checks:
         try:
-            result = await Runner.run(agent, prompt, max_turns=4)
-            print(f"  PASS  {label}: {result.final_output}")
+            result = await Runner.run(agent, prompt, max_turns=8)
+            used = "; ".join(providers.drain_notices())
+            print(f"  PASS  {label}: {result.final_output}" + (f"   [{used}]" if used else ""))
         except Exception as e:
             ok = False
             print(f"  FAIL  {label}: {type(e).__name__}: {str(e)[:300]}")

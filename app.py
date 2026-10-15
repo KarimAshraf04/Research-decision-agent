@@ -16,7 +16,7 @@ import gradio as gr  # noqa: E402
 
 from rdi import config  # noqa: E402
 from rdi.context import RUNS  # noqa: E402
-from rdi.providers import trace_summary  # noqa: E402
+from rdi.providers import chain_label, trace_summary  # noqa: E402
 from rdi.services.publisher import render_markdown  # noqa: E402
 from rdi.ui_helpers import (APPROVAL_HEADERS, MAX_CHAT_CHARS, MAX_QUESTION_CHARS, approvals_rows, clean_text,  # noqa: E402
                             counts_markdown, friendly_error, parse_approval_id, render_approval_report)
@@ -202,7 +202,7 @@ if GR_MAJOR < 6:  # Gradio 6 moved theme/css from Blocks() to launch()
 with gr.Blocks(**_blocks_kwargs) as demo:
     session_id = gr.State(lambda: uuid.uuid4().hex)
     run_id = gr.State(None)
-    gr.HTML(header_html(config.PROVIDER_LABEL, config.MODEL_SMART, config.MODEL_FAST,
+    gr.HTML(header_html(config.PROVIDER_LABEL, chain_label("smart"), chain_label("fast"),
                         provider_warning(config.PROVIDER_SMART, config.PROVIDER_FAST)))
 
     with gr.Tab("🔬 Research"):
